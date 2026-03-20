@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DarkProbe — Cybersecurity Dashboard</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#050810">
+<link rel="icon" type="image/png" href="/static/images/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg-void:#050810;--bg-deep:#0a0f1a;--bg-panel:#0f1623;--bg-card:#141c2b;
+--bg-card-alt:#182035;--bg-input:#111827;--border:#1a2540;--border-glow:#0e4a6e;
+--text-primary:#e2e8f0;--text-secondary:#8b9dc3;--text-muted:#4a5578;
+--cyan:#00e5ff;--cyan-dim:rgba(0,229,255,.12);--cyan-glow:0 0 15px rgba(0,229,255,.25);
+--purple:#a855f7;--purple-dim:rgba(168,85,247,.12);--purple-glow:0 0 15px rgba(168,85,247,.2);
+--blue:#3b82f6;--neon-green:#22d87c;--neon-green-dim:rgba(34,216,124,.12);
+--red:#ef4444;--red-dim:rgba(239,68,68,.12);
+--orange:#f59e0b;--orange-dim:rgba(245,158,11,.12);
+--gradient-brand:linear-gradient(135deg,#00e5ff,#a855f7);
+--gradient-dark:linear-gradient(180deg,rgba(0,229,255,.04)0%,transparent 60%);
+--glass:rgba(15,22,35,.75);--glass-border:rgba(255,255,255,.04);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg-void);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:9px}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;background:var(--bg-deep);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;padding:0}
+.sidebar-brand{padding:24px 20px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.brand-logo{width:46px;height:46px;border-radius:12px;overflow:hidden;box-shadow:var(--cyan-glow);flex-shrink:0}
+.brand-logo img{width:100%;height:100%;object-fit:cover}
+.brand-name{font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;background:var(--gradient-brand);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:1.5px}
+.brand-sub{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px;font-weight:600;margin-top:2px}
+.sidebar-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;border:1px solid transparent;position:relative}
+.nav-item:hover{color:var(--text-secondary);background:rgba(0,229,255,.03)}
+.nav-item.active{color:var(--cyan);background:var(--cyan-dim);border-color:rgba(0,229,255,.15);box-shadow:var(--cyan-glow)}
+.nav-item.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:3px;height:24px;background:var(--cyan);border-radius:0 4px 4px 0}
+.nav-icon{width:18px;height:18px;opacity:.7;flex-shrink:0}
+.nav-item.active .nav-icon{opacity:1}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border);text-align:center;font-size:10px;color:var(--text-muted)}
+
+/* ═══ TOPBAR ═══ */
+.topbar{position:fixed;top:0;left:220px;right:0;height:56px;background:rgba(10,15,26,.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:90}
+.topbar-left{display:flex;align-items:center;gap:16px}
+.topbar-title{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;background:var(--gradient-brand);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.topbar-right{display:flex;align-items:center;gap:14px}
+.btn-rescan{padding:8px 22px;background:var(--gradient-brand);border:none;border-radius:8px;color:#fff;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:all .2s;text-transform:uppercase}
+.btn-rescan:hover{box-shadow:var(--cyan-glow);transform:translateY(-1px)}
+.btn-rescan:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+
+/* ═══ MAIN LAYOUT ═══ */
+.main{margin-left:220px;margin-top:56px;padding:24px 26px;min-height:calc(100vh - 56px);background:var(--gradient-dark)}
+.dashboard-grid{display:grid;grid-template-columns:1fr 280px;grid-template-rows:auto auto auto;gap:20px}
+.left-col{display:flex;flex-direction:column;gap:20px}
+
+/* ═══ TARGET URL INPUT ═══ */
+.target-input-bar{display:flex;gap:12px;align-items:center;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+#targetUrl{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:border .2s}
+.target-input-bar input:focus{border-color:var(--cyan)}
+.target-input-bar input::placeholder{color:var(--text-muted)}
+.scan-options{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.opt-pill{display:flex;align-items:center;gap:5px;padding:5px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-secondary);cursor:pointer;transition:all .15s;user-select:none}
+.opt-pill:hover{border-color:var(--cyan);color:var(--cyan)}
+.opt-pill input[type="checkbox"]{accent-color:var(--cyan);width:13px;height:13px}
+.opt-num{width:36px;padding:2px;background:rgba(0,229,255,.05);border:1px solid var(--border);border-radius:4px;color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;text-align:center;margin-left:2px;font-weight:700}
+.opt-num:focus{border-color:var(--cyan)}
+
+/* ═══ SUMMARY CARDS ═══ */
+.summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.summary-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:all .25s}
+.summary-card:hover{border-color:rgba(0,229,255,.2);box-shadow:var(--cyan-glow);transform:translateY(-2px)}
+.summary-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:14px 14px 0 0}
+.summary-card.card-total::after{background:var(--gradient-brand)}
+.summary-card.card-duration::after{background:var(--blue)}
+.summary-card.card-urls::after{background:var(--purple)}
+.summary-card.card-critical::after{background:var(--red)}
+.card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.card-total .card-icon{background:var(--cyan-dim);color:var(--cyan)}
+.card-duration .card-icon{background:rgba(59,130,246,.12);color:var(--blue)}
+.card-urls .card-icon{background:var(--purple-dim);color:var(--purple)}
+.card-critical .card-icon{background:var(--red-dim);color:var(--red)}
+.card-value{font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1}
+.card-total .card-value{background:var(--gradient-brand);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.card-duration .card-value{color:var(--blue)}
+.card-urls .card-value{color:var(--purple)}
+.card-critical .card-value{color:var(--red)}
+.card-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-top:6px}
+
+/* ═══ MIDDLE ROW: CHART + SCAN DETAILS + PORTS ═══ */
+.middle-row{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+.panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative}
+.panel-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--text-primary)}
+.panel-title .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.panel-title .dot.cyan{background:var(--cyan);box-shadow:var(--cyan-glow)}
+.panel-title .dot.purple{background:var(--purple)}
+.panel-title .dot.red{background:var(--red)}
+.panel-title .dot.green{background:var(--neon-green)}
+
+/* Donut chart */
+.chart-area{display:flex;align-items:center;gap:24px}
+.donut-wrapper{position:relative;width:160px;height:160px;flex-shrink:0}
+.donut-wrapper canvas{width:160px!important;height:160px!important}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.donut-center .num{font-size:28px;font-weight:800;background:var(--gradient-brand);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.donut-center .lbl{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px}
+.legend{display:flex;flex-direction:column;gap:10px}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.legend-dot.high{background:var(--red)}
+.legend-dot.medium{background:var(--orange)}
+.legend-dot.low{background:var(--neon-green)}
+.legend-count{margin-left:auto;font-weight:700;font-size:15px;color:var(--text-primary)}
+
+/* Scan details + ports stack */
+.right-stack{display:flex;flex-direction:column;gap:14px}
+.detail-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.detail-row:last-child{border-bottom:none}
+.detail-label{color:var(--text-muted);min-width:75px;font-weight:500}
+.detail-value{color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all}
+.port-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-card);border-radius:8px;margin-bottom:6px;border:1px solid var(--border);transition:all .15s}
+.port-row:hover{border-color:rgba(0,229,255,.15)}
+.port-num{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--text-primary);min-width:45px}
+.port-svc{font-size:12px;color:var(--text-secondary);flex:1;margin-left:12px}
+.port-badge{padding:2px 10px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase}
+.port-badge.open{background:var(--neon-green-dim);color:var(--neon-green);border:1px solid rgba(34,216,124,.2)}
+.port-badge.closed{background:rgba(100,116,139,.1);color:var(--text-muted);border:1px solid rgba(100,116,139,.1)}
+
+/* ═══ FILTER TABS ═══ */
+.filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.filter-tab{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted);transition:all .15s}
+.filter-tab:hover{color:var(--text-secondary);border-color:var(--text-muted)}
+.filter-tab.active{background:var(--cyan-dim);color:var(--cyan);border-color:rgba(0,229,255,.2)}
+.filter-count{font-size:11px;background:var(--bg-card);padding:2px 6px;border-radius:4px;margin-left:4px}
+
+/* ═══ VULN TABLE ═══ */
+.vuln-table{width:100%;border-collapse:separate;border-spacing:0}
+.vuln-table thead th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-card)}
+.vuln-table thead th:first-child{border-radius:8px 0 0 0}.vuln-table thead th:last-child{border-radius:0 8px 0 0}
+.vuln-table tbody tr{transition:background .12s;cursor:pointer}
+.vuln-table tbody tr:hover{background:rgba(0,229,255,.03)}
+.vuln-table td{padding:12px 14px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.vuln-type{display:flex;align-items:center;gap:8px}
+.type-icon{font-size:14px}
+.sev{display:inline-flex;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.sev.High{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.18)}
+.sev.Medium{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(245,158,11,.18)}
+.sev.Low{background:var(--neon-green-dim);color:var(--neon-green);border:1px solid rgba(34,216,124,.18)}
+.sev.Info{background:rgba(100,116,139,.1);color:var(--text-muted);border:1px solid rgba(100,116,139,.1)}
+.url-cell{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.desc-cell{color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.table-footer{display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-size:12px;color:var(--text-muted)}
+
+/* ═══ RIGHT COLUMN ═══ */
+.right-col{display:flex;flex-direction:column;gap:16px}
+
+/* Scan Details */
+.scan-info .info-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;font-size:12px}
+.scan-info .info-row .lbl{color:var(--text-muted);font-weight:500;min-width:55px;flex-shrink:0}
+.scan-info .info-row .val{color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;line-height:1.4}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.online{background:var(--neon-green);box-shadow:0 0 8px rgba(34,216,124,.4)}
+.status-dot.scanning{background:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.4);animation:blink 1.2s infinite}
+
+/* Logs panel */
+.logs-feed{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.log-entry{display:flex;align-items:flex-start;gap:8px;padding:5px 8px;border-radius:6px;font-size:11px;font-family:'JetBrains Mono',monospace;background:var(--bg-card);border:1px solid var(--border)}
+.log-time{color:var(--text-muted);flex-shrink:0;min-width:54px}
+.log-badge{padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;flex-shrink:0}
+.log-badge.scan{background:var(--cyan-dim);color:var(--cyan)}
+.log-badge.vuln{background:var(--red-dim);color:var(--red)}
+.log-badge.info{background:rgba(59,130,246,.12);color:var(--blue)}
+.log-badge.start{background:var(--neon-green-dim);color:var(--neon-green)}
+.log-badge.error{background:var(--red-dim);color:var(--red)}
+.log-msg{color:var(--text-secondary);line-height:1.4;word-break:break-word}
+
+/* Recommendations */
+.rec-list{display:flex;flex-direction:column;gap:8px}
+.rec-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text-secondary);line-height:1.5;padding:8px 10px;background:var(--bg-card);border-radius:8px;border:1px solid var(--border)}
+.rec-bullet{color:var(--cyan);font-weight:700;flex-shrink:0;margin-top:1px}
+
+/* ═══ TARGET URLs ═══ */
+.targets-list{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto}
+.target-url-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);background:var(--bg-card);border:1px solid var(--border);transition:all .12s}
+.target-url-item:hover{border-color:var(--cyan);color:var(--cyan)}
+.target-url-item .bullet{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex-shrink:0}
+
+/* ═══ PROGRESS OVERLAY ═══ */
+.progress-overlay{display:none;position:fixed;top:56px;left:220px;right:0;bottom:0;background:rgba(5,8,16,.92);z-index:80;justify-content:center;align-items:center}
+.progress-overlay.visible{display:flex}
+.progress-box{background:var(--bg-panel);border:1px solid var(--border);border-radius:20px;padding:40px 48px;text-align:center;max-width:480px;width:100%;box-shadow:0 0 60px rgba(0,229,255,.06)}
+.progress-ring{width:120px;height:120px;margin:0 auto 20px;position:relative}
+.progress-ring svg{transform:rotate(-90deg)}
+.progress-ring circle{fill:none;stroke-width:6;stroke-linecap:round}
+.progress-ring .track{stroke:var(--border)}
+.progress-ring .fill{stroke:url(#grad);transition:stroke-dashoffset .5s ease}
+.progress-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:800;font-family:'Orbitron',sans-serif;background:var(--gradient-brand);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.progress-phase{font-size:14px;color:var(--cyan);font-weight:600;margin-bottom:8px}
+.progress-sub{font-size:12px;color:var(--text-muted)}
+.progress-logs{margin-top:20px;max-height:140px;overflow-y:auto;text-align:left;background:var(--bg-card);border-radius:10px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:11px}
+.progress-log-line{padding:3px 0;color:var(--text-secondary)}
+.progress-log-line.warning{color:var(--orange)}
+.progress-log-line.error{color:var(--red)}
+
+/* ═══ DISCLAIMER ═══ */
+.disclaimer-bar{grid-column:1/-1;text-align:center;padding:10px;font-size:11px;color:var(--orange);background:var(--orange-dim);border:1px solid rgba(245,158,11,.12);border-radius:8px}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn .4s ease both}
+
+.empty-state h3{font-size:16px;color:var(--text-secondary);margin-bottom:6px}
+
+/* ═══ PAGE VIEWS ═══ */
+.page-view{display:none;animation:fadeIn .4s ease both}
+.page-view.active{display:block}
+
+/* 🏁 Settings & Reports Specifics 🏁 */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.setting-item{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.setting-header{display:flex;align-items:center;gap:10px}
+.setting-icon{font-size:20px}
+.setting-info h4{font-size:14px;color:var(--text-primary)}
+.setting-info p{font-size:11px;color:var(--text-muted)}
+.report-row{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;transition:all .2s}
+.report-row:hover{border-color:var(--cyan);background:rgba(0,229,255,.02)}
+/* ═══ PRELOADER ═══ */
+.preloader{position:fixed;inset:0;background:var(--bg-void);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s}
+.preloader.hidden{opacity:0;visibility:hidden}
+.loader-content{position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center}
+.loader-ring{position:absolute;inset:0;border:2px solid transparent;border-top-color:var(--cyan);border-radius:50%;animation:spin 1s linear infinite}
+.loader-ring::after{content:'';position:absolute;inset:8px;border:2px solid transparent;border-bottom-color:var(--purple);border-radius:50%;animation:spin 2s linear infinite reverse}
+.loader-logo{width:80px;height:80px;background:var(--bg-panel);border-radius:18px;display:flex;align-items:center;justify-content:center;box-shadow:var(--cyan-glow);animation:pulse 2s infinite;z-index:2}
+.loader-logo img{width:50px;height:50px;object-fit:contain}
+.loader-text{margin-top:24px;color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;animation:blink 1.5s infinite}
+.loader-status{margin-top:8px;font-size:10px;color:var(--text-muted);letter-spacing:1px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.1);opacity:.8}}
+
+.report-meta{display:flex;align-items:center;gap:16px}
+.report-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)}
+.report-target{font-weight:600;font-size:13px;color:var(--text-secondary)}
+.report-status{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
+.report-status.ready{background:var(--neon-green-dim);color:var(--neon-green)}
+
+/* ═══ HAMBURGER TOGGLE ═══ */
+.hamburger{display:none;flex-direction:column;gap:4px;cursor:pointer;padding:6px;border:none;background:none;z-index:101}
+.hamburger span{display:block;width:22px;height:2px;background:var(--text-primary);border-radius:2px;transition:all .3s ease}
+.hamburger.active span:nth-child(1){transform:rotate(45deg) translate(4px,4px)}
+.hamburger.active span:nth-child(2){opacity:0}
+.hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
+
+/* ═══ SIDEBAR OVERLAY (Mobile) ═══ */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.sidebar-overlay.visible{display:block}
+
+/* ═══ RESPONSIVE: LARGE DESKTOP (≤1440px) ═══ */
+@media(max-width:1440px){
+  .dashboard-grid{grid-template-columns:1fr 260px}
+  .summary-row{gap:12px}
+}
+
+/* ═══ RESPONSIVE: SMALL DESKTOP / TABLET LANDSCAPE (≤1200px) ═══ */
+@media(max-width:1200px){
+  .dashboard-grid{grid-template-columns:1fr;grid-template-rows:auto}
+  .right-col{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .summary-row{grid-template-columns:repeat(4,1fr);gap:10px}
+  .middle-row{grid-template-columns:1fr 1fr}
+}
+
+/* ═══ RESPONSIVE: TABLET (≤1024px) ═══ */
+@media(max-width:1024px){
+  .sidebar{width:80px;padding:24px 0;transition:width .3s ease}
+  .sidebar-brand{flex-direction:column;padding:0;gap:8px;border-bottom:none;justify-content:center}
+  .brand-logo{width:42px;height:42px;margin:0 auto}
+  .brand-text,.brand-sub,.sidebar-footer,.nav-text{display:none}
+  .sidebar-nav{padding:16px 10px}
+  .nav-item{justify-content:center;padding:12px;margin:2px 4px}
+  .nav-icon{margin-right:0;font-size:18px}
+  .topbar{left:80px}
+  .main{margin-left:80px;padding:20px}
+  .progress-overlay{left:80px}
+  .btn-rescan{padding:8px 16px;font-size:11px}
+  .summary-row{grid-template-columns:repeat(2,1fr)}
+  .middle-row{grid-template-columns:1fr}
+  .card-value{font-size:24px}
+}
+
+/* ═══ RESPONSIVE: MOBILE (≤768px) ═══ */
+@media(max-width:768px){
+  .hamburger{display:flex}
+  .sidebar{transform:translateX(-100%);width:260px;position:fixed;top:0;bottom:0;z-index:1000;transition:transform .3s ease;background:var(--bg-deep);box-shadow:none}
+  .sidebar.open{transform:translateX(0);box-shadow:10px 0 50px rgba(0,0,0,.8)}
+  .sidebar-brand{flex-direction:row;padding:24px 16px;gap:12px;border-bottom:1px solid var(--border);justify-content:flex-start}
+  .brand-logo{width:46px;height:46px;margin:0}
+  .brand-text,.brand-sub,.sidebar-footer,.nav-text{display:block}
+  .sidebar-nav{padding:16px}
+  .nav-item{justify-content:flex-start;padding:12px 16px;margin:0}
+  .sidebar-footer{padding:24px 16px;background:rgba(0,0,0,0.2)}
+  .topbar{left:0;padding:0 16px;z-index:900}
+  .main{margin-left:0;padding:72px 14px 20px}
+  .progress-overlay{left:0;top:0;z-index:2000}
+  .dashboard-grid{grid-template-columns:1fr;gap:14px}
+  .right-col{grid-template-columns:1fr}
+  .summary-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .middle-row{grid-template-columns:1fr}
+  .target-input-bar{flex-direction:column;gap:10px;padding:12px}
+  .target-input-bar input{width:100%}
+  .scan-options{width:100%;justify-content:flex-start}
+  .filter-bar{overflow-x:auto;flex-wrap:nowrap;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .filter-bar::-webkit-scrollbar{display:none}
+  .filter-tab{white-space:nowrap;flex-shrink:0}
+  .vuln-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .vuln-table{min-width:600px}
+  .chart-area{flex-direction:column;align-items:center;gap:16px}
+  .donut-wrapper{width:140px;height:140px}
+  .donut-wrapper canvas{width:140px!important;height:140px!important}
+  .legend{flex-direction:row;gap:16px}
+  .legend-item{font-size:12px}
+  .progress-box{padding:28px 24px;margin:0 16px;border-radius:16px}
+  .progress-ring{width:100px;height:100px}
+  .progress-ring svg{width:100px;height:100px}
+  .progress-ring circle{stroke-width:5}
+  .progress-pct{font-size:22px}
+  .disclaimer-bar{font-size:10px;padding:8px}
+}
+
+/* ═══ RESPONSIVE: MOBILE (≤480px) ═══ */
+@media(max-width:480px){
+  .topbar{height:50px;padding:0 12px}
+  .main{margin-top:50px;padding:12px 10px;min-height:calc(100vh - 50px)}
+  .progress-overlay{top:50px}
+  .topbar-title{font-size:12px;letter-spacing:1px}
+  .btn-rescan{padding:6px 10px;font-size:9px}
+  .summary-row{grid-template-columns:1fr 1fr;gap:8px}
+  .summary-card{padding:14px}
+  .card-icon{width:30px;height:30px;font-size:15px;margin-bottom:8px}
+  .card-value{font-size:22px}
+  .card-label{font-size:10px}
+  .panel{padding:14px;border-radius:10px}
+  .panel-title{font-size:12px;margin-bottom:10px}
+  .donut-wrapper{width:120px;height:120px}
+  .donut-wrapper canvas{width:120px!important;height:120px!important}
+  .donut-center .num{font-size:22px}
+  .legend{gap:12px}
+  .legend-item{font-size:11px;gap:6px}
+  .legend-count{font-size:13px}
+  .detail-row{font-size:11px;padding:6px 0}
+  .detail-label{min-width:65px}
+  .detail-value{font-size:11px}
+  .port-row{padding:6px 10px}
+  .port-num{font-size:12px;min-width:35px}
+  .port-svc{font-size:11px}
+  .filter-tab{padding:5px 12px;font-size:11px}
+  .vuln-table td{padding:8px 10px;font-size:11px}
+  .vuln-table thead th{padding:8px 10px;font-size:9px}
+  .url-cell{max-width:140px;font-size:10px}
+  .desc-cell{max-width:120px}
+  .log-entry{gap:4px;padding:4px 6px;font-size:10px}
+  .log-time{min-width:44px;font-size:10px}
+  .log-badge{font-size:8px;padding:1px 4px}
+  .rec-item{font-size:11px;padding:6px 8px}
+  .target-url-item{font-size:10px;padding:5px 8px}
+  .progress-box{padding:24px 16px;margin:0 10px}
+  .progress-ring{width:80px;height:80px}
+  .progress-ring svg{width:80px;height:80px}
+  .progress-pct{font-size:18px}
+  .progress-phase{font-size:12px}
+  .progress-sub{font-size:11px}
+  .progress-logs{font-size:10px;padding:8px 10px;max-height:100px}
+  .empty-state{padding:30px 14px}
+  .empty-state .icon{font-size:36px}
+  .empty-state h3{font-size:14px}
+}
+
+/* ═══ RESPONSIVE: SMALL MOBILE (≤360px) ═══ */
+@media(max-width:360px){
+  .summary-row{grid-template-columns:1fr}
+  .topbar-title{display:none}
+  .right-col{gap:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<!-- Preloader -->
+<div class="preloader" id="preloader">
+  <div class="loader-content">
+    <div class="loader-ring"></div>
+    <div class="loader-logo">
+      <img src="/static/images/logo-icon.png" alt="DarkProbe">
+    </div>
+  </div>
+  <div class="loader-text">DarkProbe</div>
+  <div class="loader-status">Initializing Attack Surface Engine...</div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo"><img src="/static/images/logo-icon.png" alt="DarkProbe Logo"></div>
+    <div class="brand-text"><div class="brand-name">DARKPROBE</div><div class="brand-sub">Attack Surface Engine</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span> <span class="nav-text">Dashboard</span></div>
+    <div class="nav-item" data-page="scan"><span class="nav-icon">🔍</span> <span class="nav-text">Scan</span></div>
+    <div class="nav-item" data-page="reports"><span class="nav-icon">📄</span> <span class="nav-text">Reports</span></div>
+    <div class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span> <span class="nav-text">Settings</span></div>
+  </nav>
+  <div class="sidebar-footer">
+    DarkProbe v1.0.0<br>
+    <span style="opacity:0.6;font-size:9px;letter-spacing:1px">Authorized Use Only</span>
+  </div>
+</aside>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <img src="/static/images/logo-icon.png" alt="DarkProbe" style="width:32px;height:32px;border-radius:8px">
+    <div class="topbar-title">DARKPROBE</div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-rescan" id="btnRescan" onclick="launchScan()">⚡ Start Scan</button>
+  </div>
+</header>
+
+<!-- Progress Overlay -->
+<div class="progress-overlay" id="progressOverlay">
+  <div class="progress-box fade-in">
+    <div class="progress-ring">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+        <circle class="track" cx="60" cy="60" r="52"/>
+        <circle class="fill" id="progressCircle" cx="60" cy="60" r="52" stroke-dasharray="326.73" stroke-dashoffset="326.73"/>
+      </svg>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+    <div class="progress-phase" id="progressPhase">Initializing DarkProbe...</div>
+    <div class="progress-sub" id="progressSub">Preparing scan modules</div>
+    <div class="progress-logs" id="progressLogs"></div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<main class="main">
+  <!-- DASHBOARD PAGE -->
+  <div id="view-dashboard" class="page-view active">
+    <div class="dashboard-grid">
+    <div class="left-col">
+
+      <!-- Target Input -->
+      <div class="target-input-bar">
+        <input type="text" id="targetUrl" placeholder="https://target-domain.com" autocomplete="off">
+        <div class="scan-options">
+          <label class="opt-pill"><input type="checkbox" id="optSqli" checked> SQLi</label>
+          <label class="opt-pill"><input type="checkbox" id="optXss" checked> XSS</label>
+          <label class="opt-pill"><input type="checkbox" id="optPorts" checked> Ports</label>
+          <label class="opt-pill"><input type="checkbox" id="optDirs" checked> Dirs</label>
+          <label class="opt-pill"><input type="checkbox" id="optHeaders" checked> Headers</label>
+          <label class="opt-pill" title="Max concurrent threads">⚡ Threads: <input type="number" class="opt-num" id="optThreads" value="5" min="1" max="20"></label>
+          <label class="opt-pill" title="Crawler depth">🛡️ Depth: <input type="number" class="opt-num" id="optDepth" value="3" min="1" max="10"></label>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="summary-row">
+        <div class="summary-card card-total"><div class="card-icon">🛡️</div><div class="card-value" id="valTotal">0</div><div class="card-label">Total Vulnerabilities</div></div>
+        <div class="summary-card card-duration"><div class="card-icon">⏱️</div><div class="card-value" id="valDuration">00:00</div><div class="card-label">Scan Duration</div></div>
+        <div class="summary-card card-urls"><div class="card-icon">🌐</div><div class="card-value" id="valUrls">0</div><div class="card-label">Impacted URLs</div></div>
+        <div class="summary-card card-critical"><div class="card-icon">🔥</div><div class="card-value" id="valCritical">0</div><div class="card-label">Critical Risks</div></div>
+      </div>
+
+      <!-- Middle Row -->
+      <div class="middle-row">
+        <!-- Donut Chart -->
+        <div class="panel">
+          <div class="panel-title"><span class="dot cyan"></span> Vulnerability Distribution</div>
+          <div class="chart-area">
+            <div class="donut-wrapper"><canvas id="donutChart"></canvas><div class="donut-center"><div class="num" id="donutTotal">0</div><div class="lbl">Total</div></div></div>
+            <div class="legend">
+              <div class="legend-item"><span class="legend-dot high"></span>High<span class="legend-count" id="legHigh">0</span></div>
+              <div class="legend-item"><span class="legend-dot medium"></span>Medium<span class="legend-count" id="legMed">0</span></div>
+              <div class="legend-item"><span class="legend-dot low"></span>Low<span class="legend-count" id="legLow">0</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- Scan Details + Open Ports -->
+        <div class="right-stack">
+          <div class="panel" style="flex:1">
+            <div class="panel-title"><span class="dot purple"></span> Scan Details</div>
+            <div class="detail-row"><span class="detail-label">Target URL</span><span class="detail-value" id="detTarget">—</span></div>
+            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" id="detStatus">Idle</span></div>
+            <div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-value" id="detTime">—</span></div>
+          </div>
+          <div class="panel" style="flex:1">
+            <div class="panel-title"><span class="dot green"></span> Open Ports</div>
+            <div id="portsContainer"><div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px">No scan data</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Tabs + Vuln Table -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot red"></span> Vulnerability Findings</div>
+        <div class="filter-bar">
+          <div class="filter-tab active" data-filter="all" onclick="filterVulns('all',this)">All <span class="filter-count" id="fcAll">0</span></div>
+          <div class="filter-tab" data-filter="SQL" onclick="filterVulns('SQL',this)">💉 SQLi</div>
+          <div class="filter-tab" data-filter="XSS" onclick="filterVulns('XSS',this)">📜 XSS</div>
+          <div class="filter-tab" data-filter="Port" onclick="filterVulns('Port',this)">🌐 Ports</div>
+          <div class="filter-tab" data-filter="Dir" onclick="filterVulns('Dir',this)">📁 Dirs</div>
+          <div class="filter-tab" data-filter="Header" onclick="filterVulns('Header',this)">🔒 Headers</div>
+          <div style="flex:1"></div>
+          <div id="downloadArea"></div>
+        </div>
+        <div class="vuln-table-wrap" id="vulnTableArea">
+          <div class="empty-state"><div class="icon">🔍</div><h3>No scan results yet</h3><p>Enter a target URL and launch a scan</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="right-col">
+      <!-- Scan Info -->
+      <div class="panel scan-info">
+        <div class="panel-title"><span class="dot cyan"></span> Scan Details</div>
+        <div class="info-row"><span class="status-dot online"></span><span class="lbl">Status:</span><span class="val" id="riStatus">Ready</span></div>
+        <div class="info-row"><span class="lbl">Target:</span><span class="val" id="riTarget">—</span></div>
+        <div class="info-row"><span class="lbl">Date:</span><span class="val" id="riDate">—</span></div>
+      </div>
+
+      <!-- Live Logs -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot green"></span> Logs <span style="margin-left:auto;font-size:11px;color:var(--text-muted);cursor:pointer" onclick="clearLogs()">↻</span></div>
+        <div class="logs-feed" id="logsFeed"><div style="font-size:11px;color:var(--text-muted);text-align:center;padding:16px">Awaiting scan...</div></div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot purple"></span> Recommendations</div>
+        <div class="rec-list" id="recList"><div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px">Scan a target to get recommendations</div></div>
+      </div>
+
+      <!-- Target URLs -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot cyan"></span> Target URLs</div>
+        <div class="targets-list" id="targetsList"><div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px">No URLs discovered</div></div>
+      </div>
+    </div>
+
+    <div class="disclaimer-bar">⚠️ DarkProbe is for authorized security testing only. Unauthorized scanning of systems is illegal.</div>
+  </div>
+</div>
+
+<!-- SCAN PAGE -->
+<div id="view-scan" class="page-view">
+  <div class="panel">
+    <div class="panel-title"><span class="dot cyan"></span> Advanced Scan Configuration</div>
+    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px">Configure your scan depth, threads, and modules for a thorough penetration test.</p>
+    <div class="settings-grid">
+      <div class="setting-item">
+        <div class="setting-header"><span class="setting-icon">🕵️</span><div class="setting-info"><h4>Stealth Mode</h4><p>Reduce request frequency to avoid detection</p></div></div>
+        <input type="checkbox" checked>
+      </div>
+      <div class="setting-item">
+        <div class="setting-header"><span class="setting-icon">🛡️</span><div class="setting-info"><h4>Deep Crawl</h4><p>Follow recursive links up to specified depth</p></div></div>
+        <input type="number" value="3" class="opt-num">
+      </div>
+      <div class="setting-item">
+        <div class="setting-header"><span class="setting-icon">🧩</span><div class="setting-info"><h4>Custom Payloads</h4><p>Use custom injection payloads for fuzzing</p></div></div>
+        <button class="btn-rescan" style="padding:4px 10px;font-size:10px">Edit Payloads</button>
+      </div>
+    </div>
+    <div style="margin-top:30px">
+      <button class="btn-rescan" style="width:200px" onclick="switchPage('dashboard')">Configure on Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- REPORTS PAGE -->
+<div id="view-reports" class="page-view">
+  <div class="panel">
+    <div class="panel-title"><span class="dot purple"></span> Scan Reports</div>
+    <div id="reportsList">
+      <div class="empty-state"><div class="icon">📄</div><h3>No reports generated</h3><p>Complete a scan to view detailed analysis</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS PAGE -->
+<div id="view-settings" class="page-view">
+  <div class="panel">
+    <div class="panel-title"><span class="dot green"></span> System Settings</div>
+    <div class="settings-grid">
+      <div class="setting-item">
+        <div class="setting-header"><span class="setting-icon">🔑</span><div class="setting-info"><h4>API Access</h4><p>Manage your external API keys for scanning</p></div></div>
+        <button class="btn-rescan" style="padding:6px 12px;font-size:10px">Manage Keys</button>
+      </div>
+      <div class="setting-item">
+        <div class="setting-header"><span class="setting-icon">🌓</span><div class="setting-info"><h4>Theme Mode</h4><p>Switch between Cyberpunk and Dark Void</p></div></div>
+        <select style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:5px;border-radius:4px;font-size:11px"><option>Cyberpunk (Default)</option><option>Dark Void</option></select>
+      </div>
+      <div class="setting-item">
+        <div class="setting-header"><span class="setting-icon">🔔</span><div class="setting-info"><h4>Notifications</h4><p>Alert when critical vulnerabilities are found</p></div></div>
+        <input type="checkbox" checked>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+
+<script>
+/* ═══ STATE ═══ */
+let allVulns=[], pollTimer=null;
+
+/* ═══ DONUT CHART (Pure Canvas) ═══ */
+function drawDonut(h,m,l){
+  const c=document.getElementById('donutChart'), ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;c.width=160*dpr;c.height=160*dpr;ctx.scale(dpr,dpr);
+  const cx=80,cy=80,r=60,lw=18,total=h+m+l||1;
+  ctx.clearRect(0,0,160,160);
+  const segs=[{v:h,c:'#ef4444'},{v:m,c:'#f59e0b'},{v:l,c:'#22d87c'}];
+  let ang=-Math.PI/2;
+  if(total===0||(!h&&!m&&!l)){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='#1a2540';ctx.lineWidth=lw;ctx.stroke();return;}
+  segs.forEach(s=>{if(s.v<=0)return;const slice=(s.v/total)*Math.PI*2;ctx.beginPath();ctx.arc(cx,cy,r,ang,ang+slice);ctx.strokeStyle=s.c;ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();ang+=slice+0.04;});
+}
+
+/* ═══ SCAN LAUNCH ═══ */
+async function launchScan(){
+  const url=document.getElementById('targetUrl').value.trim();
+  if(!url){document.getElementById('targetUrl').focus();return;}
+  const cfg={url,threads:+document.getElementById('optThreads').value,depth:+document.getElementById('optDepth').value,
+    max_urls:100,sqli:document.getElementById('optSqli').checked,xss:document.getElementById('optXss').checked,
+    ports:document.getElementById('optPorts').checked,dirs:document.getElementById('optDirs').checked,
+    headers:document.getElementById('optHeaders').checked};
+  document.getElementById('btnRescan').disabled=true;
+  document.getElementById('btnRescan').textContent='Scanning...';
+  document.getElementById('progressOverlay').classList.add('visible');
+  document.getElementById('progressLogs').innerHTML='';
+  try{
+    const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+    const d=await r.json();
+    if(d.status==='started'){pollTimer=setInterval(pollStatus,800);}
+    else{alert(d.message||'Failed');resetBtn();}
+  }catch(e){alert('Error: '+e.message);resetBtn();}
+}
+
+async function pollStatus(){
+  try{
+    const r=await fetch('/api/status');const d=await r.json();
+    const pct=d.progress||0,circ=document.getElementById('progressCircle');
+    circ.style.strokeDashoffset=326.73-(326.73*pct/100);
+    document.getElementById('progressPct').textContent=pct+'%';
+    document.getElementById('progressPhase').textContent=d.phase||'Processing...';
+    document.getElementById('progressSub').textContent=d.status==='running'?'Scan in progress...':'';
+    const lg=document.getElementById('progressLogs');
+    lg.innerHTML=(d.logs||[]).slice(-20).map(l=>`<div class="progress-log-line ${l.level}">[${l.time}] ${l.message}</div>`).join('');
+    lg.scrollTop=lg.scrollHeight;
+    if(d.status==='completed'){clearInterval(pollTimer);document.getElementById('progressOverlay').classList.remove('visible');resetBtn();loadResults();}
+    else if(d.status==='error'){clearInterval(pollTimer);document.getElementById('progressOverlay').classList.remove('visible');resetBtn();alert('Error: '+(d.error||'Unknown'));}
+  }catch(e){console.error(e);}
+}
+
+function resetBtn(){document.getElementById('btnRescan').disabled=false;document.getElementById('btnRescan').textContent='⚡ Start Scan';}
+
+/* ═══ LOAD RESULTS ═══ */
+async function loadResults(){
+  try{
+    const r=await fetch('/api/results');const d=await r.json();if(!d.results)return;
+    const res=d.results, sev=res.severity_counts||{};
+    allVulns=res.vulnerabilities||[];
+    document.getElementById('valTotal').textContent=res.total_vulns;
+    document.getElementById('valDuration').textContent=res.duration_formatted||res.duration+'s';
+    document.getElementById('valUrls').textContent=res.crawl_stats?.urls_found||0;
+    document.getElementById('valCritical').textContent=sev.High||0;
+    document.getElementById('donutTotal').textContent=res.total_vulns;
+    document.getElementById('legHigh').textContent=sev.High||0;
+    document.getElementById('legMed').textContent=sev.Medium||0;
+    document.getElementById('legLow').textContent=(sev.Low||0)+(sev.Info||0);
+    drawDonut(sev.High||0,sev.Medium||0,(sev.Low||0)+(sev.Info||0));
+    document.getElementById('detTarget').textContent=res.target;
+    document.getElementById('detStatus').textContent='Completed';
+    document.getElementById('detTime').textContent=new Date().toLocaleString();
+    document.getElementById('riStatus').textContent='Completed';
+    document.getElementById('riTarget').textContent=res.target;
+    document.getElementById('riDate').textContent=new Date().toLocaleString();
+    document.getElementById('fcAll').textContent=allVulns.length;
+    // Ports
+    const ports=allVulns.filter(v=>v.type&&v.type.includes('Port'));
+    const pc=document.getElementById('portsContainer');
+    if(ports.length){pc.innerHTML=ports.slice(0,6).map(p=>{const parts=p.url.split(':');const pn=parts[parts.length-1];return`<div class="port-row"><span class="port-num">${pn}</span><span class="port-svc">${p.description?.split('(')[1]?.split(')')[0]||''}</span><span class="port-badge open">Open</span></div>`;}).join('');}
+    else{pc.innerHTML='<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px">No open ports found</div>';}
+    // Downloads
+    document.getElementById('downloadArea').innerHTML=`<a href="/api/download/html" class="filter-tab" style="text-decoration:none;color:var(--cyan)">📄 HTML</a><a href="/api/download/json" class="filter-tab" style="text-decoration:none;color:var(--purple);margin-left:6px">📦 JSON</a>`;
+    // Logs
+    const lf=document.getElementById('logsFeed');
+    const statusR=await fetch('/api/status');const sd=await statusR.json();
+    if(sd.logs&&sd.logs.length){lf.innerHTML=sd.logs.slice(-30).map(l=>{
+      let bc='info';if(l.message.includes('VULN'))bc='vuln';else if(l.message.includes('Starting'))bc='start';else if(l.message.includes('Error'))bc='error';else if(l.message.includes('scan')||l.message.includes('Running'))bc='scan';
+      return`<div class="log-entry"><span class="log-time">${l.time}</span><span class="log-badge ${bc}">${bc}</span><span class="log-msg">${l.message}</span></div>`;}).join('');}
+    // Recommendations
+    const recs=new Set();allVulns.forEach(v=>{if(v.recommendation)recs.add(v.recommendation);});
+    const rl=document.getElementById('recList');
+    if(recs.size){rl.innerHTML=[...recs].slice(0,6).map(r=>`<div class="rec-item"><span class="rec-bullet">›</span>${r}</div>`).join('');}
+    // Target URLs
+    const urls=new Set();allVulns.forEach(v=>{if(v.url)urls.add(v.url);});
+    const tl=document.getElementById('targetsList');
+    if(urls.size){tl.innerHTML=[...urls].slice(0,10).map(u=>`<div class="target-url-item"><span class="bullet"></span>${u}</div>`).join('');}
+    // Render table
+    renderVulnTable(allVulns);
+  }catch(e){console.error('Results error:',e);}
+}
+
+/* ═══ VULN TABLE ═══ */
+function renderVulnTable(vulns){
+  const area=document.getElementById('vulnTableArea');
+  if(!vulns.length){area.innerHTML='<div class="empty-state"><div class="icon">✅</div><h3>No vulnerabilities found</h3></div>';return;}
+  const icons={'SQL':'💉','XSS':'📜','Port':'🌐','Dir':'📁','Header':'🔒','Missing':'🔒','Info':'ℹ️','Open':'🌐','Potential':'⚠️','Reflected':'📜'};
+  const getIcon=t=>{for(const[k,v]of Object.entries(icons))if(t.includes(k))return v;return'⚠️';};
+  let rows=vulns.map((v,i)=>`<tr><td>${i+1}</td><td><div class="vuln-type"><span class="type-icon">${getIcon(v.type)}</span>${v.type}</div></td><td class="url-cell" title="${v.url}">${v.url}</td><td><span class="sev ${v.severity}">${v.severity}</span></td><td class="desc-cell" title="${v.description}">${v.description||'—'}</td></tr>`).join('');
+  area.innerHTML=`<table class="vuln-table"><thead><tr><th>ID</th><th>Type</th><th>Affected URL</th><th>Severity</th><th>Description</th></tr></thead><tbody>${rows}</tbody></table><div class="table-footer"><span>${vulns.length} finding(s)</span></div>`;
+}
+
+/* ═══ FILTERS ═══ */
+function filterVulns(filter,el){
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+  if(filter==='all')renderVulnTable(allVulns);
+  else renderVulnTable(allVulns.filter(v=>v.type&&v.type.toLowerCase().includes(filter.toLowerCase())));
+}
+
+
+
+/* ═══ NAV ═══ */
+function switchPage(pageId){
+  // Update nav items
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    const p=n.getAttribute('data-page');
+    n.classList.toggle('active',p===pageId);
+  });
+  
+  // Update views
+  document.querySelectorAll('.page-view').forEach(v=>{
+    v.classList.toggle('active',v.id===`view-${pageId}`);
+  });
+
+  // Scroll to top
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',function(){
+    const page=this.getAttribute('data-page');
+    switchPage(page);
+    
+    // Close sidebar on mobile
+    if(window.innerWidth<=768){
+      const sidebar=document.getElementById('sidebar');
+      if(sidebar.classList.contains('open')) toggleSidebar();
+    }
+  });
+});
+
+function clearLogs(){document.getElementById('logsFeed').innerHTML='<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:16px">Logs cleared</div>';}
+
+/* ═══ MOBILE SIDEBAR TOGGLE ═══ */
+function toggleSidebar(){
+  const sidebar=document.getElementById('sidebar');
+  const overlay=document.getElementById('sidebarOverlay');
+  const hamburger=document.getElementById('hamburger');
+  const isOpen=sidebar.classList.contains('open');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('visible');
+  hamburger.classList.toggle('active');
+  document.body.style.overflow=isOpen?'':'hidden';
+}
+
+document.getElementById('sidebarOverlay').addEventListener('click',function(){
+  toggleSidebar();
+});
+
+window.addEventListener('resize',function(){
+  if(window.innerWidth>768){
+    const sidebar=document.getElementById('sidebar');
+    const overlay=document.getElementById('sidebarOverlay');
+    const hamburger=document.getElementById('hamburger');
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+    hamburger.classList.remove('active');
+    document.body.style.overflow='';
+  }
+});
+
+/* 🏁 Init & PWA Registration */
+window.addEventListener('load', () => {
+  const preloader = document.getElementById('preloader');
+  setTimeout(() => {
+    preloader.classList.add('hidden');
+    drawDonut(0,0,0);
+  }, 1200); // Premium feel delay
+});
+
+// PWA Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/sw.js').catch(err => console.log('SW Registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>

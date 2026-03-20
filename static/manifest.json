@@ -1,0 +1,22 @@
+{
+  "name": "DarkProbe Security Scanner",
+  "short_name": "DarkProbe",
+  "description": "Intelligent Web Application Attack Surface Analysis Engine",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050810",
+  "theme_color": "#00e5ff",
+  "icons": [
+    {
+      "src": "/static/images/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/logo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

