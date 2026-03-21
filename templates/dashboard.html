@@ -321,6 +321,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg-void);color:var(--text-p
   .chart-area{flex-direction:column;align-items:center;gap:16px}
   .donut-wrapper{width:140px;height:140px}
   .donut-wrapper canvas{width:140px!important;height:140px!important}
+  .report-row{flex-direction:column;align-items:flex-start;gap:12px;padding:14px}
+  .report-meta{flex-direction:column;align-items:flex-start;gap:6px;width:100%}
+  .report-actions{width:100%;flex-wrap:wrap}
   .legend{flex-direction:row;gap:16px}
   .legend-item{font-size:12px}
   .progress-box{padding:28px 24px;margin:0 16px;border-radius:16px}
@@ -497,10 +500,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg-void);color:var(--text-p
         <!-- Scan Details + Open Ports -->
         <div class="right-stack">
           <div class="panel" style="flex:1">
-            <div class="panel-title"><span class="dot purple"></span> Scan Details</div>
-            <div class="detail-row"><span class="detail-label">Target URL</span><span class="detail-value" id="detTarget">—</span></div>
-            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" id="detStatus">Idle</span></div>
-            <div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-value" id="detTime">—</span></div>
+            <div class="panel-title"><span class="dot purple"></span> Threat Intelligence</div>
+            <div class="detail-row"><span class="detail-label">Security Score</span><span class="detail-value" id="detScore">100%</span></div>
+            <div class="detail-row"><span class="detail-label">Risk Level</span><span class="detail-value" id="detRisk">None</span></div>
+            <div class="detail-row"><span class="detail-label">Asset Impact</span><span class="detail-value" id="detImpact">0 Nodes</span></div>
           </div>
           <div class="panel" style="flex:1">
             <div class="panel-title"><span class="dot green"></span> Open Ports</div>
@@ -532,10 +535,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg-void);color:var(--text-p
     <div class="right-col">
       <!-- Scan Info -->
       <div class="panel scan-info">
-        <div class="panel-title"><span class="dot cyan"></span> Scan Details</div>
-        <div class="info-row"><span class="status-dot online"></span><span class="lbl">Status:</span><span class="val" id="riStatus">Ready</span></div>
-        <div class="info-row"><span class="lbl">Target:</span><span class="val" id="riTarget">—</span></div>
-        <div class="info-row"><span class="lbl">Date:</span><span class="val" id="riDate">—</span></div>
+        <div class="panel-title"><span class="dot cyan"></span> Session Overview</div>
+        <div class="info-row"><span class="status-dot online"></span><span class="lbl">Execution:</span><span class="val" id="riStatus">Ready</span></div>
+        <div class="info-row"><span class="lbl">Endpoint:</span><span class="val" id="riTarget">—</span></div>
+        <div class="info-row"><span class="lbl">Initialized:</span><span class="val" id="riDate">—</span></div>
       </div>
 
       <!-- Live Logs -->
@@ -646,6 +649,15 @@ async function launchScan(){
   document.getElementById('btnRescan').textContent='Scanning...';
   document.getElementById('progressOverlay').classList.add('visible');
   document.getElementById('progressLogs').innerHTML='';
+  
+  // Reset Metrics
+  document.getElementById('detScore').textContent = 'Analyzing...';
+  document.getElementById('detRisk').textContent = 'Assessing...';
+  document.getElementById('detImpact').textContent = 'Discovering...';
+  document.getElementById('riStatus').textContent = 'In Progress';
+  document.getElementById('riTarget').textContent = url;
+  document.getElementById('riDate').textContent = new Date().toLocaleString();
+  
   try{
     const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
     const d=await r.json();
@@ -687,12 +699,29 @@ async function loadResults(){
     document.getElementById('legMed').textContent=sev.Medium||0;
     document.getElementById('legLow').textContent=(sev.Low||0)+(sev.Info||0);
     drawDonut(sev.High||0,sev.Medium||0,(sev.Low||0)+(sev.Info||0));
-    document.getElementById('detTarget').textContent=res.target;
-    document.getElementById('detStatus').textContent='Completed';
-    document.getElementById('detTime').textContent=new Date().toLocaleString();
     document.getElementById('riStatus').textContent='Completed';
     document.getElementById('riTarget').textContent=res.target;
     document.getElementById('riDate').textContent=new Date().toLocaleString();
+    
+    // Threat Intelligence Calculation
+    const high = sev.High || 0;
+    const med = sev.Medium || 0;
+    const low = (sev.Low || 0) + (sev.Info || 0);
+    const score = Math.max(0, 100 - (high * 25) - (med * 10) - (low * 2));
+    const scoreEl = document.getElementById('detScore');
+    scoreEl.textContent = score + '%';
+    scoreEl.style.color = score > 70 ? 'var(--neon-green)' : (score > 40 ? 'var(--orange)' : 'var(--red)');
+    
+    let risk = 'Low';
+    if(high > 0) risk = 'Critical';
+    else if(med > 0) risk = 'Elevated';
+    else if(low > 0) risk = 'Moderate';
+    else risk = 'Negligible';
+    
+    document.getElementById('detRisk').textContent = risk;
+    document.getElementById('detRisk').style.color = high > 0 ? 'var(--red)' : (med > 0 ? 'var(--orange)' : 'var(--neon-green)');
+    document.getElementById('detImpact').textContent = (res.crawl_stats?.urls_found || 0) + ' Nodes';
+    
     document.getElementById('fcAll').textContent=allVulns.length;
     // Ports
     const ports=allVulns.filter(v=>v.type&&v.type.includes('Port'));
@@ -717,7 +746,49 @@ async function loadResults(){
     if(urls.size){tl.innerHTML=[...urls].slice(0,10).map(u=>`<div class="target-url-item"><span class="bullet"></span>${u}</div>`).join('');}
     // Render table
     renderVulnTable(allVulns);
+    // Refresh reports list
+    loadReports();
   }catch(e){console.error('Results error:',e);}
+}
+
+/* ═══ REPORTS LIST ═══ */
+async function loadReports(){
+  try{
+    const r=await fetch('/api/reports');const d=await r.json();
+    const area=document.getElementById('reportsList');
+    if(!d.reports||!d.reports.length){area.innerHTML='<div class="empty-state"><div class="icon">📄</div><h3>No reports generated</h3><p>Complete a scan to view detailed analysis</p></div>';return;}
+    
+    let html='';
+    d.reports.forEach(scan=>{
+      html+=`<div class="report-row" style="padding:10px 20px">
+        <div class="report-meta" style="flex:1">
+          <div class="report-target" style="font-size:13px;color:var(--cyan);font-weight:700;font-family:'Orbitron',sans-serif;min-width:100px;word-break:break-all">${scan.target.toLowerCase()}</div>
+          <div class="report-date" style="color:var(--text-muted);font-size:11px">${scan.date}</div>
+        </div>
+        <div class="report-actions" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          ${scan.html ? `<a href="/api/download_file?filename=${scan.html}" class="btn-rescan" style="padding:5px 14px;font-size:10px;text-decoration:none;background:var(--cyan-dim);border-color:rgba(0,229,255,0.2)">📄 HTML</a>` : ''}
+          ${scan.json ? `<a href="/api/download_file?filename=${scan.json}" class="btn-rescan" style="padding:5px 14px;font-size:10px;text-decoration:none;background:var(--purple-dim);border-color:rgba(168,85,247,0.2)">📦 JSON</a>` : ''}
+          <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+          <button onclick="deleteReport('${scan.html||''}','${scan.json||''}', this)" class="btn-rescan" style="padding:5px 10px;font-size:10px;background:rgba(239, 68, 68, 0.05);color:var(--red);border-color:rgba(239,68,68,0.15)">🗑️</button>
+        </div>
+      </div>`;
+    });
+    area.innerHTML=html;
+  }catch(e){console.error('Reports fetch error:',e);}
+}
+
+async function deleteReport(html, json, btn){
+  if(!confirm('Delete this scan session and its reports?')) return;
+  try{
+    const r=await fetch('/api/delete_report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html,json})});
+    const d=await r.json();
+    if(d.status==='deleted'){
+      const row = btn.closest('.report-row');
+      row.style.opacity='0';
+      row.style.transform='scale(0.95)';
+      setTimeout(()=>row.remove(), 300);
+    }
+  }catch(e){console.error('Delete error:',e);}
 }
 
 /* ═══ VULN TABLE ═══ */
@@ -751,6 +822,9 @@ function switchPage(pageId){
   document.querySelectorAll('.page-view').forEach(v=>{
     v.classList.toggle('active',v.id===`view-${pageId}`);
   });
+
+  // Fetch reports if switching to reports page
+  if(pageId==='reports') loadReports();
 
   // Scroll to top
   window.scrollTo({top:0,behavior:'smooth'});
@@ -805,6 +879,7 @@ window.addEventListener('load', () => {
   setTimeout(() => {
     preloader.classList.add('hidden');
     drawDonut(0,0,0);
+    loadReports();
   }, 1200); // Premium feel delay
 });
 

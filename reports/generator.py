@@ -439,14 +439,21 @@ class ReportGenerator:
             margin-bottom: 48px;
         }}
 
+        .vuln-table-wrap {{
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-card);
+        }}
+
         .vuln-table {{
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
+            background: transparent;
+            border: none;
         }}
 
         .vuln-table thead th {{
@@ -610,8 +617,17 @@ class ReportGenerator:
         @media (max-width: 768px) {{
             .header-content {{ flex-direction: column; }}
             .scan-meta {{ align-items: flex-start; }}
-            .summary-grid {{ grid-template-columns: repeat(2, 1fr); }}
-            .url-cell {{ max-width: 150px; }}
+            .summary-grid {{ grid-template-columns: repeat(2, 1fr); gap: 12px; }}
+            .url-cell {{ max-width: 180px; }}
+        }}
+        
+        @media (max-width: 480px) {{
+            .summary-grid {{ grid-template-columns: 1fr; }}
+            .stats-row {{ grid-template-columns: 1fr; }}
+            .container {{ padding: 0 16px; }}
+            .brand-text h1 {{ font-size: 24px; }}
+            .detail-grid {{ padding: 12px; }}
+            .detail-value.code {{ max-width: 100%; overflow-x: auto; }}
         }}
     </style>
 </head>
@@ -685,7 +701,7 @@ class ReportGenerator:
     <!-- Vulnerability Table -->
     <div class="vuln-section">
         <h2 class="section-title">Detailed Findings</h2>
-        {"<table class='vuln-table'><thead><tr><th>#</th><th>Severity</th><th>Type</th><th>URL</th><th>Module</th></tr></thead><tbody>" + vuln_rows + "</tbody></table>" if vuln_rows else "<div class='no-vulns'><div class='icon'>✅</div><h3>No Vulnerabilities Found</h3><p>The scan did not detect any known vulnerabilities in the target application.</p></div>"}
+        {"<div class='vuln-table-wrap'><table class='vuln-table'><thead><tr><th>#</th><th>Severity</th><th>Type</th><th>URL</th><th>Module</th></tr></thead><tbody>" + vuln_rows + "</tbody></table></div>" if vuln_rows else "<div class='no-vulns'><div class='icon'>✅</div><h3>No Vulnerabilities Found</h3><p>The scan did not detect any known vulnerabilities in the target application.</p></div>"}
     </div>
 
     <!-- Disclaimer -->

@@ -160,12 +160,19 @@ def run_background_scan(target_url: str, config: dict):
             "timeout": timeout,
         }
 
+        # Generate sanitized filename
+        domain = target_url.split("//")[-1].split("/")[0].replace(".", "_")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = f"darkprobe_report_{domain}_{timestamp}"
+
         report_gen = ReportGenerator()
         json_path = report_gen.generate_json(
-            target_url, all_vulns, duration, crawl_stats, scan_config
+            target_url, all_vulns, duration, crawl_stats, scan_config, 
+            filename=f"{base_name}.json"
         )
         html_path = report_gen.generate_html(
-            target_url, all_vulns, duration, crawl_stats, scan_config
+            target_url, all_vulns, duration, crawl_stats, scan_config,
+            filename=f"{base_name}.html"
         )
 
         sev_counts = {"High": 0, "Medium": 0, "Low": 0, "Info": 0}
@@ -266,6 +273,90 @@ def api_status():
 def api_results():
     """Get scan results."""
     return jsonify({"results": scan_state.get("results")})
+
+
+@app.route("/api/reports")
+def api_reports():
+    """List all available reports, grouped by scan session."""
+    scans = {}
+    reports_dir = Path("reports")
+    if not reports_dir.exists():
+        return jsonify({"reports": []})
+
+    for file in reports_dir.glob("darkprobe_report_*.*"):
+        # Unique ID for grouping is the filename without extension
+        # Extract components: darkprobe_report_[domain_]YYYYMMDD_HHMMSS
+        parts = file.stem.split("_")
+        if len(parts) < 4: continue
+        
+        # Timestamp is always the last two parts: YYYYMMDD, HHMMSS
+        ts_id = "_".join(parts[-2:])
+        group_id = file.stem.replace(file.suffix, "")
+        if ts_id not in scans:
+            scans[ts_id] = {
+                "id": ts_id,
+                "target": "System Analysis",
+                "date": datetime.fromtimestamp(file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                "html": None,
+                "json": None,
+                "domain": ".".join(parts[2:-2]) if len(parts) > 4 else "System"
+            }
+        
+        # Try to extract real target if this is a JSON file
+        if file.suffix == ".json":
+            scans[ts_id]["json"] = file.name
+            try:
+                with open(file, "r") as f:
+                    data = json.load(f)
+                    res_target = data.get("results", {}).get("target") or data.get("meta", {}).get("target_url")
+                    if res_target:
+                        scans[ts_id]["target"] = res_target.split("//")[-1].split("/")[0]
+            except: pass
+        else:
+            scans[ts_id]["html"] = file.name
+            # If target is still fallback and we have domain from filename, use it
+            if scans[ts_id]["target"] == "System Analysis" and scans[ts_id]["domain"] != "System":
+                scans[ts_id]["target"] = scans[ts_id]["domain"]
+
+    # Flatten and sort
+    report_list = list(scans.values())
+    report_list.sort(key=lambda x: x["date"], reverse=True)
+    return jsonify({"reports": report_list})
+
+
+@app.route("/api/delete_report", methods=["POST"])
+def api_delete_report():
+    """Delete report files for a scan session."""
+    data = request.get_json()
+    html_file = data.get("html")
+    json_file = data.get("json")
+    
+    reports_dir = Path("reports")
+    deleted = 0
+    for f in [html_file, json_file]:
+        if f:
+            filepath = reports_dir / os.path.basename(f)
+            if filepath.exists():
+                os.remove(filepath)
+                deleted += 1
+    
+    return jsonify({"status": "deleted", "count": deleted})
+
+
+@app.route("/api/download_file")
+def api_download_file():
+    """Download a specific report file by filename."""
+    filename = request.args.get("filename")
+    if not filename:
+        return jsonify({"error": "No filename provided"}), 400
+    
+    # Security check: ensure it's just a filename in the reports dir
+    safe_filename = os.path.basename(filename)
+    filepath = Path("reports") / safe_filename
+    
+    if filepath.exists():
+        return send_file(str(filepath), as_attachment=True)
+    return jsonify({"error": "File not found"}), 404
 
 
 @app.route("/api/download/<report_type>")
