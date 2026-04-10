@@ -230,7 +230,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 <div align="center">
 
-**Built with ⚡ by the DarkProbe Team**
+**Built with ⚡ by Abhinav Chauhan**
 
 *Intelligent Attack Surface Analysis Engine — v1.0.0*
 
