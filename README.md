@@ -12,7 +12,7 @@
 
 **DarkProbe** is a production-ready, modular web application vulnerability scanner built in Python.  
 It detects common web vulnerabilities and generates professional, branded reports.
- 
+  
 *A modern, lightweight alternative to tools like Burp Suite, Nikto, and OWASP ZAP.*
 
 </div>
